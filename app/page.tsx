@@ -1,101 +1,85 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [todos, setTodos] = useState<any[]>([]);
+  const [newTask, setNewTask] = useState("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  // タスクを取得する
+  const fetchTodos = async () => {
+    const { data, error } = await supabase
+      .from("todos")
+      .select("*")
+      .order("created_at", { ascending: true });
+    if (!error) setTodos(data || []);
+  };
+
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  // タスクを追加する
+  const addTodo = async () => {
+    if (!newTask.trim()) return;
+    const { data, error } = await supabase
+      .from("todos")
+      .insert([{ task: newTask }])
+      .select("*");
+    if (!error) setTodos((prev) => [...prev, ...(data || [])]);
+    setNewTask("");
+  };
+
+  // 完了状態を切り替える
+  const toggleComplete = async (id: string, currentState: boolean) => {
+    const { error } = await supabase
+      .from("todos")
+      .update({ is_complete: !currentState })
+      .eq("id", id);
+    if (!error) {
+      setTodos((prev) =>
+        prev.map((todo) =>
+          todo.id === id ? { ...todo, is_complete: !currentState } : todo
+        )
+      );
+    }
+  };
+
+  return (
+    <main>
+      <h1>Todoリスト</h1>
+      {/* 新しいタスク入力フォーム */}
+      <input
+        type="text"
+        value={newTask}
+        onChange={(e) => setNewTask(e.target.value)}
+        placeholder="新しいタスクを追加"
+      />
+      <button onClick={addTodo}>追加</button>
+
+      {/* タスク一覧 */}
+      <ul>
+        {todos.map((todo) => (
+          <li key={todo.id}>
+            <span
+              style={{
+                textDecoration: todo.is_complete ? "line-through" : "none",
+              }}
+            >
+              {todo.task}
+            </span>
+            <button onClick={() => toggleComplete(todo.id, todo.is_complete)}>
+              {todo.is_complete ? "未完了に戻す" : "完了"}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </main>
   );
 }
