@@ -1,23 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+type Todo = {
+  id: string;
+  task: string;
+  is_complete: boolean;
+  created_at: string;
+};
+
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export default function Home() {
-  const [todos, setTodos] = useState<any[]>([]);
-  const [newTask, setNewTask] = useState("");
+const Page = () => {
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTask, setNewTask] = useState<string>('');
 
-  // タスクを取得する
+  // タスクの取得
   const fetchTodos = async () => {
     const { data, error } = await supabase
-      .from("todos")
-      .select("*")
-      .order("created_at", { ascending: true });
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: true });
     if (!error) setTodos(data || []);
   };
 
@@ -25,23 +33,25 @@ export default function Home() {
     fetchTodos();
   }, []);
 
-  // タスクを追加する
+  // タスクの追加
   const addTodo = async () => {
     if (!newTask.trim()) return;
     const { data, error } = await supabase
-      .from("todos")
+      .from('todos')
       .insert([{ task: newTask }])
-      .select("*");
-    if (!error) setTodos((prev) => [...prev, ...(data || [])]);
-    setNewTask("");
+      .select('*');
+    if (!error) {
+      setTodos((prev) => [...prev, ...(data || [])]);
+      setNewTask('');
+    }
   };
 
-  // 完了状態を切り替える
+  // タスクの完了状態の切り替え
   const toggleComplete = async (id: string, currentState: boolean) => {
     const { error } = await supabase
-      .from("todos")
+      .from('todos')
       .update({ is_complete: !currentState })
-      .eq("id", id);
+      .eq('id', id);
     if (!error) {
       setTodos((prev) =>
         prev.map((todo) =>
@@ -52,34 +62,28 @@ export default function Home() {
   };
 
   return (
-    <main>
-      <h1>Todoリスト</h1>
-      {/* 新しいタスク入力フォーム */}
+    <div>
+      <h1>Todo App</h1>
       <input
         type="text"
         value={newTask}
         onChange={(e) => setNewTask(e.target.value)}
-        placeholder="新しいタスクを追加"
+        placeholder="Enter a new task"
       />
-      <button onClick={addTodo}>追加</button>
+      <button onClick={addTodo}>Add Task</button>
 
-      {/* タスク一覧 */}
       <ul>
         {todos.map((todo) => (
-          <li key={todo.id}>
-            <span
-              style={{
-                textDecoration: todo.is_complete ? "line-through" : "none",
-              }}
-            >
-              {todo.task}
-            </span>
+          <li key={todo.id} style={{ textDecoration: todo.is_complete ? 'line-through' : 'none' }}>
+            {todo.task}
             <button onClick={() => toggleComplete(todo.id, todo.is_complete)}>
-              {todo.is_complete ? "未完了に戻す" : "完了"}
+              {todo.is_complete ? 'Undo' : 'Complete'}
             </button>
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
-}
+};
+
+export default Page;
